@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Category Model for dynamic categories
+model Category {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String   @unique // Name of the category (e.g., 'Electronics', 'Clothing')
+  createdAt DateTime @default(now()) @db.Timestamptz
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamptz
+
+  products Product[] // Back relation to products
+
+  @@map("categories")
+}
+
+enum ProductStatus {
+  ACTIVE
+  DISCONTINUED
+  PENDING
+}
+
+model Product {
+  id            String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sku           String           @unique @map("sku")
+  barcode       String?          @unique @map("barcode")
+  name          String           @map("name")
+  description   String?          @map("description")
+  price         Decimal          @db.Decimal(10, 2)
+  categoryId    String?          @db.Uuid // Foreign key to Category
+  uom           String?          @map("uom")
+  imageUrls     Json?            @db.Json
+  isInStock     Boolean          @default(true) @map("is_active")
+  created_at    DateTime         @default(now()) @map("created_at") @db.Timestamptz
+  updated_at    DateTime         @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+  tax_rate      Decimal?         @db.Decimal(5, 2)
+  discount      Decimal?         @db.Decimal(5, 2)
+  promotionId   String?          @map("promotion_id")
+  weight        Float?
+  dimensions    Dimension?
+  status        ProductStatus    @default(ACTIVE)
+  variants      ProductVariant[]
+  stockBalances StockBalance[]
+  SalesItem     SalesItem[]
+  costPrice     Decimal?         @db.Decimal(10, 2)
+  supplierId    String?
+  supplierPrice Decimal?         @db.Decimal(10, 2)
+  total_stock   Int              @default(0)
+  category      Category?        @relation(fields: [categoryId], references: [id])
+  StockMove     StockMove[]
+
+  @@map("products")
+}
+
+model Dimension {
+  id        String  @id @unique @default(uuid()) @db.Uuid
+  length    Float
+  width     Float
+  height    Float
+  product   Product @relation(fields: [productId], references: [id])
+  productId String  @unique @db.Uuid
+}
+
+model ProductVariant {
+  id            String   @id @default(uuid()) @db.Uuid
+  productId     String   @db.Uuid // Foreign key to Product
+  name          String
+  sku           String   @unique
+  price         Decimal  @db.Decimal(10, 2)
+  stockQuantity Int      @default(0)
+  imageUrls     Json?    @db.Json
+  taxRate       Decimal? @db.Decimal(5, 2)
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("product_variants")
+}
+
+model Location {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name       String   @unique @map("name")
+  address    String?  @map("address")
+  is_active  Boolean  @default(true) @map("is_active")
+  created_at DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updated_at DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz
+
+  stockBalances  StockBalance[]
+  stockMovesFrom StockMove[]    @relation("StockMoveFromLocation")
+  stockMovesTo   StockMove[]    @relation("StockMoveToLocation")
+
+  @@map("locations")
+}
+
+model StockBalance {
+  product_id    String   @map("product_id") @db.Uuid
+  location_id   String   @map("location_id") @db.Uuid
+  on_hand_qty   Int      @default(0) @map("on_hand_qty")
+  committed_qty Int      @default(0) @map("committed_qty")
+  available_qty Int      @default(0) @map("available_qty")
+  updated_at    DateTime @default(now()) @map("updated_at") @db.Timestamptz
+
+  product  Product  @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  location Location @relation(fields: [location_id], references: [id], onDelete: Cascade)
+
+  @@id([product_id, location_id])
+  @@index([updated_at])
+  @@map("stock_balances")
+}
+
+model Store {
+  id       String  @id @default(uuid()) @db.Uuid
+  name     String
+  location String?
+  users    User[] // Back relation
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id           String  @id @default(uuid()) @db.Uuid
+  username     String  @unique
+  email        String? @unique
+  passwordHash String
+  role         Role    @default(CASHIER)
+  isActive     Boolean @default(true)
+
+  storeId String @db.Uuid
+  store   Store  @relation(fields: [storeId], references: [id])
+
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  lastLoginAt       DateTime?
+  AuditLog          AuditLog[]
+  // ✅ NEW: Link a user to all transactions they processed
+  salesTransactions SalesTransaction[]
+}
+
+model Terminal {
+  id         String  @id @default(uuid()) @map("id")
+  name       String
+  location   String?
+  printer    String?
+  cashDrawer Boolean @map("cash_drawer")
+  status     String // Or use an enum: `enum TerminalStatus { online offline }`
+
+  @@map("terminals")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  CASHIER
+  CLERK
+  COLLECTOR
+}
+
+// 🎯 MODIFIED: SalesTransaction now includes discount, payment method, and cashier ID.
+model SalesTransaction {
+  id            String  @id @default(uuid()) @map("id") @db.Uuid
+  transactionId String  @unique @map("transaction_id")
+  amount        Decimal @db.Decimal(10, 2) // Total amount (amount field from API request)
+  status        String
+
+  // ✅ NEW: Fields for Checkout Logic
+  discountApplied Decimal @default(0.00) @map("discount_applied") @db.Decimal(10, 2)
+  paymentMethod   String  @map("payment_method") // "Cash", "Bank", "Ecocash"
+  cashierId       String  @map("cashier_id") @db.Uuid
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  // ✅ NEW: Relation to the User (Cashier)
+  cashier User @relation(fields: [cashierId], references: [id])
+
+  items    SalesItem[]
+  Feedback Feedback[]
+
+  @@map("sales_transactions")
+}
+
+model SalesItem {
+  id                 String @id @default(uuid()) @map("id") @db.Uuid
+  productId          String @map("product_id") @db.Uuid
+  salesTransactionId String @map("sales_transaction_id") @db.Uuid
+
+  quantity  Int
+  price     Decimal  @db.Decimal(10, 2) // This is the unit price at time of sale
+  revenue   Decimal  @db.Decimal(10, 2)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  product          Product          @relation(fields: [productId], references: [id])
+  salesTransaction SalesTransaction @relation(fields: [salesTransactionId], references: [id])
+
+  @@map("sales_items")
+}
+
+model Feedback {
+  id                 String   @id @default(uuid()) @db.Uuid
+  salesTransactionId String   @map("sales_transaction_id") @db.Uuid
+  rating             Int
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  salesTransaction SalesTransaction @relation(fields: [salesTransactionId], references: [id], onDelete: Cascade)
+
+  @@map("feedbacks")
+}
+
+model AuditLog {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @map("user_id") @db.Uuid
+  action    String
+  entity    String
+  entityId  String   @map("entity_id")
+  metadata  Json?
+  createdTs DateTime @default(now()) @map("created_ts")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("audit_logs")
+}
+
+// ADDed this stockmove
+
+model StockMove {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  product_id       String   @map("product_id") @db.Uuid
+  from_location_id String?  @map("from_location_id") @db.Uuid // Null for receipts/production
+  to_location_id   String?  @map("to_location_id") @db.Uuid // Null for sales/wastage
+  qty              Int      @map("qty")
+  unit_cost        Decimal? @map("unit_cost") @db.Decimal(10, 2) // Cost at time of move
+  reason           String   @map("reason") // E.g., 'RECEIPT', 'SALE', 'ADJUSTMENT_IN', 'TRANSFER_OUT'
+  ref_type         String?  @map("ref_type") // E.g., 'PO', 'SO', 'ADJ', 'TRF'
+  ref_id           String?  @map("ref_id") // Reference to PO/Sales ID
+  created_by       String?  @map("created_by") // User ID or System ID
+  created_at       DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  product       Product   @relation(fields: [product_id], references: [id], onDelete: Cascade)
+  from_location Location? @relation("StockMoveFromLocation", fields: [from_location_id], references: [id], onDelete: SetNull)
+  to_location   Location? @relation("StockMoveToLocation", fields: [to_location_id], references: [id], onDelete: SetNull)
+
+  @@index([product_id, created_at])
+  @@map("stock_moves")
+}
