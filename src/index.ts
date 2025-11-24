@@ -64,7 +64,7 @@ app.use('/api/v1', checkoutRoutes);
 // ✅ Centralized error handler
 app.use(errorHandler);
 
-app.get('/', (req, res) => {
+app.get('/https://point-of-sale-client-git-main-devmists-projects.vercel.app/', (req, res) => {
     res.send(`<h1>This is the Point of Sale</h1>`);
 });
 
