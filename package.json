@@ -4,10 +4,16 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+<<<<<<< HEAD
     "postinstall": "prisma generate",
     "build": "tsc",
     "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts"
+=======
+     "postinstall": "prisma generate",
+    "build": "tsc",
+    "start": "node dist/server.js"
+>>>>>>> a8ad32e3d3cd283c4239207e11ac8418d013ddfa
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
