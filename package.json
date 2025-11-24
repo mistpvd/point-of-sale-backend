@@ -4,7 +4,9 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "postinstall": "prisma generate",
+    "build": "tsc",
+    "start": "node dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts"
   },
   "prisma": {
@@ -16,6 +18,9 @@
   "type": "commonjs",
   "dependencies": {
     "@prisma/client": "^6.18.0",
+    "prisma": "^6.18.0",
+    "typescript": "^5.9.2",
+    "ts-node": "^10.9.2",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
     "date-fns": "^4.1.0",
@@ -25,20 +30,18 @@
     "jsonwebtoken": "^9.0.2",
     "pg": "^8.16.3",
     "uuid": "^13.0.0",
-    "zod": "^4.1.9"
-  },
-  "devDependencies": {
+    "zod": "^4.1.9",
+
     "@types/cors": "^2.8.19",
     "@types/decimal.js": "^0.0.32",
     "@types/express": "^5.0.3",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^24.3.1",
     "@types/pg": "^8.15.5",
-    "@types/uuid": "^10.0.0",
+    "@types/uuid": "^10.0.0"
+  },
+  "devDependencies": {
     "nodemon": "^3.1.10",
-    "prisma": "^6.18.0",
-    "ts-node": "^10.9.2",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.9.2"
+    "ts-node-dev": "^2.0.0"
   }
 }
