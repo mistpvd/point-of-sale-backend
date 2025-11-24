@@ -23,7 +23,10 @@ dotenv.config();
 
 //  2. Define the allowed origin (your frontend's URL)
 const corsOptions = {
-    origin: 'http://localhost:5173', // Only allow requests from your frontend
+    origin: [
+        'http://localhost:5173',
+        'https://point-of-sale-client-git-main-devmists-projects.vercel.app'
+    ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
 };
@@ -64,8 +67,9 @@ app.use('/api/v1', checkoutRoutes);
 // ✅ Centralized error handler
 app.use(errorHandler);
 
-app.get('/https://point-of-sale-client-git-main-devmists-projects.vercel.app/', (req, res) => {
-    res.send(`<h1>This is the Point of Sale</h1>`);
+// Redirect backend root → frontend
+app.get('/', (req, res) => {
+    res.redirect("https://point-of-sale-client-git-main-devmists-projects.vercel.app");
 });
 
 
